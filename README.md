@@ -3,7 +3,7 @@ A Full-Stack Hospital Management System built using FastAPI, PostgreSQL, and Str
 This system allows managing Patients, Doctors, and Appointments with a live dashboard and CRUD operations.
 
 🔗 Live Links
-Frontend UI (Streamlit):https://hospital-patient-management-system-l928zbdcygfcniaowcz9pn.streamlit.app/
+Frontend UI (Streamlit): https://hospital-patient-management-system-l928zbdcygfcniaowcz9pn.streamlit.app/
 Backend API (FastAPI): https://hospital-patient-management-system-4.onrender.com
 Database (PostgreSQL): Hosted on cloud (managed by Render)
 🛠 Tech Stack
