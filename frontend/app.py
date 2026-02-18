@@ -3,7 +3,10 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-API_URL = "http://127.0.0.1:8000"
+# =====================================================
+# API URL
+# =====================================================
+API_URL = "https://hospital-patient-management-system-4.onrender.com"
 
 st.set_page_config(
     page_title="Hospital Patient Management System",
@@ -91,37 +94,38 @@ if menu == "Dashboard":
             </div>
             """, unsafe_allow_html=True)
 
-    except:
-        st.error("Backend not running")
+    except Exception as e:
+        st.error(f"Backend error: {e}")
 
 # =====================================================
-# GENERIC CRUD FUNCTION
+# GENERIC CRUD FUNCTION WITH EFFECTS
 # =====================================================
 def crud_section(title, endpoint, fields):
     st.title(title)
     tabs = st.tabs(["View All", "Get By ID", "Add", "Update", "Delete"])
 
-    # VIEW ALL
+    # ================= VIEW ALL =================
     with tabs[0]:
         res = requests.get(f"{API_URL}/{endpoint}")
         if res.ok:
             st.dataframe(pd.DataFrame(res.json()), use_container_width=True)
         else:
-            st.error("Error fetching data")
+            st.error(res.text)
 
-    # GET BY ID
+    # ================= GET BY ID =================
     with tabs[1]:
         item_id = st.number_input("Enter ID", min_value=1, key=f"get_{endpoint}")
         if st.button("Fetch", key=f"fetch_{endpoint}"):
             res = requests.get(f"{API_URL}/{endpoint}/{item_id}")
             if res.ok:
-                data = res.json()
                 st.success("Record Found ✅")
-                st.json(data)
+                st.json(res.json())
+                st.balloons()
+                st.stop()
             else:
-                st.error("Not Found ❌")
+                st.error(res.text)
 
-    # ADD
+    # ================= ADD =================
     with tabs[2]:
         payload = {}
 
@@ -134,12 +138,10 @@ def crud_section(title, endpoint, fields):
                 payload[field] = st.selectbox(field.capitalize(), options, key=f"add_{endpoint}_{field}")
 
             elif field == "appointment_date":
-                date_val = st.date_input("Appointment Date")
-                payload[field] = date_val.strftime("%Y-%m-%d")
+                payload[field] = st.date_input("Appointment Date").strftime("%Y-%m-%d")
 
             elif field == "appointment_time":
-                time_val = st.time_input("Appointment Time")
-                payload[field] = time_val.strftime("%H:%M:%S")
+                payload[field] = st.time_input("Appointment Time").strftime("%H:%M:%S")
 
             else:
                 payload[field] = st.text_input(field.capitalize(), key=f"add_{endpoint}_{field}")
@@ -149,10 +151,11 @@ def crud_section(title, endpoint, fields):
             if res.ok:
                 st.success("Added Successfully 🎉")
                 st.balloons()
+                st.stop()
             else:
                 st.error(res.text)
 
-    # UPDATE
+    # ================= UPDATE =================
     with tabs[3]:
         item_id = st.number_input("ID to Update", min_value=1, key=f"update_id_{endpoint}")
         payload = {}
@@ -166,12 +169,10 @@ def crud_section(title, endpoint, fields):
                 payload[field] = st.selectbox(f"New {field.capitalize()}", options, key=f"update_{endpoint}_{field}")
 
             elif field == "appointment_date":
-                date_val = st.date_input("New Appointment Date")
-                payload[field] = date_val.strftime("%Y-%m-%d")
+                payload[field] = st.date_input("New Appointment Date").strftime("%Y-%m-%d")
 
             elif field == "appointment_time":
-                time_val = st.time_input("New Appointment Time")
-                payload[field] = time_val.strftime("%H:%M:%S")
+                payload[field] = st.time_input("New Appointment Time").strftime("%H:%M:%S")
 
             else:
                 payload[field] = st.text_input(f"New {field.capitalize()}", key=f"update_{endpoint}_{field}")
@@ -181,10 +182,11 @@ def crud_section(title, endpoint, fields):
             if res.ok:
                 st.success("Updated Successfully 🚀")
                 st.balloons()
+                st.stop()
             else:
                 st.error(res.text)
 
-    # DELETE
+    # ================= DELETE =================
     with tabs[4]:
         item_id = st.number_input("ID to Delete", min_value=1, key=f"delete_{endpoint}")
         if st.button("Delete", key=f"delete_btn_{endpoint}"):
@@ -192,35 +194,21 @@ def crud_section(title, endpoint, fields):
             if res.ok:
                 st.success("Deleted Successfully ❄")
                 st.snow()
+                st.stop()
             else:
                 st.error(res.text)
 
 # =====================================================
-# PATIENTS
+# PAGES
 # =====================================================
 if menu == "Patients":
-    crud_section(
-        "👨‍⚕ Patients Management",
-        "patients",
-        ["name", "age", "gender", "phone", "address", "problem"]
-    )
+    crud_section("👨‍⚕ Patients Management", "patients",
+                 ["name", "age", "gender", "phone", "address", "problem"])
 
-# =====================================================
-# DOCTORS
-# =====================================================
 if menu == "Doctors":
-    crud_section(
-        "👩‍⚕ Doctors Management",
-        "doctors",
-        ["name", "specialization", "phone"]
-    )
+    crud_section("👩‍⚕ Doctors Management", "doctors",
+                 ["name", "specialization", "phone"])
 
-# =====================================================
-# APPOINTMENTS
-# =====================================================
 if menu == "Appointments":
-    crud_section(
-        "📅 Appointments Management",
-        "appointments",
-        ["patient_id", "doctor_id", "appointment_date", "appointment_time", "status"]
-    )
+    crud_section("📅 Appointments Management", "appointments",
+                 ["patient_id", "doctor_id", "appointment_date", "appointment_time", "status"])

@@ -2,7 +2,6 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import date
-
 import database_models
 from database import SessionLocal, engine
 from models import (
@@ -12,17 +11,12 @@ from models import (
 )
 
 # -------------------------------------------------
-# Create Tables
-# -------------------------------------------------
-database_models.Base.metadata.create_all(bind=engine)
-
-# -------------------------------------------------
 # Create App
 # -------------------------------------------------
-app = FastAPI()
+app = FastAPI(title="Hospital Patient Management System API")
 
 # -------------------------------------------------
-# CORS (For Streamlit)
+# CORS
 # -------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +27,13 @@ app.add_middleware(
 )
 
 # -------------------------------------------------
+# Create Tables
+# -------------------------------------------------
+@app.on_event("startup")
+def startup():
+    database_models.Base.metadata.create_all(bind=engine)
+
+# -------------------------------------------------
 # Database Dependency
 # -------------------------------------------------
 def get_db():
@@ -41,6 +42,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# =================================================
+# ================= HOME ==========================
+# =================================================
+
+@app.get("/")
+def home():
+    return {"message": "Hospital API Running Successfully 🚀"}
 
 # =================================================
 # ================= PATIENT APIs ==================
@@ -74,7 +83,6 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db)):
 
 @app.put("/patients/{patient_id}")
 def update_patient(patient_id: int, patient: PatientCreate, db: Session = Depends(get_db)):
-
     db_patient = db.query(database_models.Patient).filter(
         database_models.Patient.id == patient_id
     ).first()
@@ -82,12 +90,8 @@ def update_patient(patient_id: int, patient: PatientCreate, db: Session = Depend
     if not db_patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    db_patient.name = patient.name
-    db_patient.age = patient.age
-    db_patient.gender = patient.gender
-    db_patient.phone = patient.phone
-    db_patient.address = patient.address
-    db_patient.problem=patient.problem
+    for key, value in patient.model_dump().items():
+        setattr(db_patient, key, value)
 
     db.commit()
     db.refresh(db_patient)
@@ -97,7 +101,6 @@ def update_patient(patient_id: int, patient: PatientCreate, db: Session = Depend
 
 @app.delete("/patients/{patient_id}")
 def delete_patient(patient_id: int, db: Session = Depends(get_db)):
-
     db_patient = db.query(database_models.Patient).filter(
         database_models.Patient.id == patient_id
     ).first()
@@ -110,6 +113,7 @@ def delete_patient(patient_id: int, db: Session = Depends(get_db)):
 
     return {"message": "Patient deleted successfully"}
 
+
 # =================================================
 # ================= DOCTOR APIs ===================
 # =================================================
@@ -121,7 +125,6 @@ def get_doctors(db: Session = Depends(get_db)):
 
 @app.get("/doctors/{doctor_id}", response_model=DoctorResponse)
 def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
-
     doctor = db.query(database_models.Doctor).filter(
         database_models.Doctor.id == doctor_id
     ).first()
@@ -143,7 +146,6 @@ def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db)):
 
 @app.put("/doctors/{doctor_id}")
 def update_doctor(doctor_id: int, doctor: DoctorCreate, db: Session = Depends(get_db)):
-
     db_doctor = db.query(database_models.Doctor).filter(
         database_models.Doctor.id == doctor_id
     ).first()
@@ -151,9 +153,8 @@ def update_doctor(doctor_id: int, doctor: DoctorCreate, db: Session = Depends(ge
     if not db_doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    db_doctor.name = doctor.name
-    db_doctor.specialization = doctor.specialization
-    db_doctor.phone = doctor.phone
+    for key, value in doctor.model_dump().items():
+        setattr(db_doctor, key, value)
 
     db.commit()
     db.refresh(db_doctor)
@@ -163,7 +164,6 @@ def update_doctor(doctor_id: int, doctor: DoctorCreate, db: Session = Depends(ge
 
 @app.delete("/doctors/{doctor_id}")
 def delete_doctor(doctor_id: int, db: Session = Depends(get_db)):
-
     db_doctor = db.query(database_models.Doctor).filter(
         database_models.Doctor.id == doctor_id
     ).first()
@@ -176,6 +176,7 @@ def delete_doctor(doctor_id: int, db: Session = Depends(get_db)):
 
     return {"message": "Doctor deleted successfully"}
 
+
 # =================================================
 # ============== APPOINTMENT APIs =================
 # =================================================
@@ -187,7 +188,6 @@ def get_appointments(db: Session = Depends(get_db)):
 
 @app.get("/appointments/{appointment_id}", response_model=AppointmentResponse)
 def get_appointment_by_id(appointment_id: int, db: Session = Depends(get_db)):
-
     appointment = db.query(database_models.Appointment).filter(
         database_models.Appointment.id == appointment_id
     ).first()
@@ -201,7 +201,6 @@ def get_appointment_by_id(appointment_id: int, db: Session = Depends(get_db)):
 @app.post("/appointments")
 def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get_db)):
 
-    # Check patient exists
     patient = db.query(database_models.Patient).filter(
         database_models.Patient.id == appointment.patient_id
     ).first()
@@ -209,7 +208,6 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Check doctor exists
     doctor = db.query(database_models.Doctor).filter(
         database_models.Doctor.id == appointment.doctor_id
     ).first()
@@ -217,11 +215,9 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    # Prevent past booking
     if appointment.appointment_date < date.today():
         raise HTTPException(status_code=400, detail="Cannot book past date")
 
-    # Prevent double booking
     existing = db.query(database_models.Appointment).filter(
         database_models.Appointment.doctor_id == appointment.doctor_id,
         database_models.Appointment.appointment_date == appointment.appointment_date,
@@ -249,11 +245,8 @@ def update_appointment(appointment_id: int, appointment: AppointmentCreate, db: 
     if not db_appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    db_appointment.appointment_date = appointment.appointment_date
-    db_appointment.appointment_time = appointment.appointment_time
-    db_appointment.status = appointment.status
-    db_appointment.patient_id = appointment.patient_id
-    db_appointment.doctor_id = appointment.doctor_id
+    for key, value in appointment.model_dump().items():
+        setattr(db_appointment, key, value)
 
     db.commit()
     db.refresh(db_appointment)
@@ -261,7 +254,7 @@ def update_appointment(appointment_id: int, appointment: AppointmentCreate, db: 
     return {"message": "Appointment updated successfully"}
 
 
-@app.delete("/appointments/{appointment_i.d}")
+@app.delete("/appointments/{appointment_id}")
 def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
 
     db_appointment = db.query(database_models.Appointment).filter(
